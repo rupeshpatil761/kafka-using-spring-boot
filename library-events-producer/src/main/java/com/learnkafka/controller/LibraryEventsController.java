@@ -8,21 +8,38 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.learnkafka.domain.LibraryEvent;
+import com.learnkafka.producer.LibraryEventsProducer;
 
 @RestController
 public class LibraryEventsController {
+	
+	private final LibraryEventsProducer libraryEventsProducer;
+	
+	// constructor injection
+	public LibraryEventsController(LibraryEventsProducer libraryEventsProducer) {
+		this.libraryEventsProducer = libraryEventsProducer;
+	}
 	
 	//private static final Logger logger = Logger.getLogger(LibraryEventsController.class.getName());
     private static final Logger logger = LoggerFactory.getLogger(LibraryEventsController.class);
 
 	@PostMapping("/v1/libraryevent")
-	public ResponseEntity<LibraryEvent> postLibraryEvent(@RequestBody LibraryEvent event){
-
-		// invoke kafka producer
+	public ResponseEntity<Object> postLibraryEvent(@RequestBody LibraryEvent event){
 		logger.info("Library Event : {} ", event);
-		
-		return ResponseEntity.status(HttpStatus.CREATED).body(event);
+		try {
+			// invoke kafka producer
+			libraryEventsProducer.sendLibraryEvent_approach3(event);
+			
+			// this statement will get printed even before sending event - when application
+			// started and tries to send first event. i.e. asynchronous invocation of send method
+			logger.info("After sending library event");
+			
+			return ResponseEntity.status(HttpStatus.CREATED).body(event);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+		}
 	}
-	
 }
