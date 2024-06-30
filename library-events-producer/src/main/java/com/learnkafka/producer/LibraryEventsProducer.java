@@ -2,6 +2,7 @@ package com.learnkafka.producer;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
@@ -35,14 +36,20 @@ public class LibraryEventsProducer {
 		this.objectMapper = objectMapper;
 	}
 
+	/**
+	 * Approach 1  -- sync + async
+	 * @param event
+	 * @return
+	 * @throws JsonProcessingException
+	 * 
+	 * 1. Blocking call - Very first send method gets the metadata of kafka cluster
+	   (only one time after application boots up) -- sync call
+	   2: Send message happens - Returns a CompletableFuture (async call)
+	 */
 	public CompletableFuture<SendResult<Integer, String>> sendLibraryEvent(LibraryEvent event)
 			throws JsonProcessingException {
 		var key = event.libraryEventId();
 		var value = objectMapper.writeValueAsString(event);
-
-		// 1. Blocking call - Very first send method gets the metadata of kafka cluster
-		// (only one time after application boots up) -- sync call
-		// 2: Send message happens - Returns a CompletableFuture (async call)
 
 		var completableFuture = kafkaTemplate.send(topic, key, value);
 		return completableFuture.whenComplete((sendResult, throwable) -> {
@@ -63,18 +70,20 @@ public class LibraryEventsProducer {
 		logger.error("Error sending the message and exception is {}", throwable.getMessage(), throwable);
 	}
 
+	// Approach 2 -- sync
 	// Pure synchronous approach - get() is a synchronous call
 	public SendResult<Integer, String> sendLibraryEvent_approach2(LibraryEvent libraryEvent) throws Exception {
 		var key = libraryEvent.libraryEventId();
 		var value = objectMapper.writeValueAsString(libraryEvent);
-		SendResult<Integer, String> sendResult = kafkaTemplate.send(topic, key, value).get();
+		SendResult<Integer, String> sendResult = kafkaTemplate.send(topic, key, value).get(3, TimeUnit.SECONDS);
+		// OR simply call .get();
 		handleSuccess(key, value, sendResult);
 		return sendResult;
 
 	}
 
-	
-	// similar behavior as approach 1
+	// Approach 3 - Using ProducerRecord with headers
+	// similar behavior as approach 1 -- sync + async
 	public CompletableFuture<SendResult<Integer, String>> sendLibraryEvent_approach3(LibraryEvent event)
 			throws Exception {
 		
