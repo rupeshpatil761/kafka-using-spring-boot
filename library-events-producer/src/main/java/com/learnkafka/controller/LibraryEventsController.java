@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.learnkafka.domain.LibraryEvent;
 import com.learnkafka.producer.LibraryEventsProducer;
 
@@ -30,7 +29,7 @@ public class LibraryEventsController {
 		logger.info("Library Event : {} ", event);
 		try {
 			// invoke kafka producer
-			libraryEventsProducer.sendLibraryEvent_approach3(event);
+			libraryEventsProducer.sendLibraryEvent_approach2(event);
 			
 			// this statement will get printed even before sending event - when application
 			// started and tries to send first event. i.e. asynchronous invocation of send method
