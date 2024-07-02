@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.learnkafka.domain.LibraryEvent;
 import com.learnkafka.producer.LibraryEventsProducer;
 
+import jakarta.validation.Valid;
+
 @RestController
 public class LibraryEventsController {
 	
@@ -25,11 +27,13 @@ public class LibraryEventsController {
     private static final Logger logger = LoggerFactory.getLogger(LibraryEventsController.class);
 
 	@PostMapping("/v1/libraryevent")
-	public ResponseEntity<Object> postLibraryEvent(@RequestBody LibraryEvent event){
+	public ResponseEntity<Object> postLibraryEvent(@RequestBody @Valid LibraryEvent event){
 		logger.info("Library Event : {} ", event);
 		try {
 			// invoke kafka producer
-			libraryEventsProducer.sendLibraryEvent_approach2(event);
+			//libraryEventsProducer.sendLibraryEvent(event);
+			//libraryEventsProducer.sendLibraryEvent_approach2(event);
+			libraryEventsProducer.sendLibraryEvent_approach3(event);
 			
 			// this statement will get printed even before sending event - when application
 			// started and tries to send first event. i.e. asynchronous invocation of send method
