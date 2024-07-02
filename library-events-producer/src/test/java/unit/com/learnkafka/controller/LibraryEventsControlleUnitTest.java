@@ -17,19 +17,18 @@ import com.learnkafka.domain.LibraryEvent;
 import com.learnkafka.producer.LibraryEventsProducer;
 import com.learnkafka.util.TestUtil;
 
-
 // Test Slice Concept -- Here we are slicing part of the application context i.e. Web Layer
 // In case of Integration testing we have used whole Spring Boot Application context
 // @WebMvcTest internally does @AutoConfigureWebMvc & @AutoConfigureMockMvc
 @WebMvcTest(LibraryEventsController.class)
 class LibraryEventsControlleUnitTest {
-	
+
 	@Autowired
 	private MockMvc mockMvc;
-	
+
 	@Autowired
 	private ObjectMapper objectMapper;
-	
+
 	@MockBean
 	private LibraryEventsProducer libraryEventsProducer;
 
@@ -37,35 +36,31 @@ class LibraryEventsControlleUnitTest {
 	void testPostLibraryEvent() throws Exception {
 		// given
 		var inputJson = objectMapper.writeValueAsString(TestUtil.libraryEventRecord());
-		
-		when(libraryEventsProducer.sendLibraryEvent_approach3(isA(LibraryEvent.class)))
-		.thenReturn(null);
-		
+
+		when(libraryEventsProducer.sendLibraryEvent_approach3(isA(LibraryEvent.class))).thenReturn(null);
+
 		// when
-		mockMvc.perform(MockMvcRequestBuilders
-				.post("/v1/libraryevent")
-				.content(inputJson)
-				.contentType(MediaType.APPLICATION_JSON))
-		.andExpect(MockMvcResultMatchers.status().isCreated());
-		
+		mockMvc.perform(MockMvcRequestBuilders.post("/v1/libraryevent").content(inputJson)
+				.contentType(MediaType.APPLICATION_JSON)).andExpect(MockMvcResultMatchers.status().isCreated());
+
 		// then
 	}
-	
+
 	@Test
 	void testPostLibraryEvent_InvalidInputs() throws Exception {
 		// given
-		var inputJson = objectMapper.writeValueAsString(TestUtil.bookRecordWithInvalidValues());
+		var inputJson = objectMapper.writeValueAsString(TestUtil.libraryEventRecordWithInvalidBook());
+
+		when(libraryEventsProducer.sendLibraryEvent_approach3(isA(LibraryEvent.class))).thenReturn(null);
 		
-		when(libraryEventsProducer.sendLibraryEvent_approach3(isA(LibraryEvent.class)))
-		.thenReturn(null);
-		
+		var errorMessage = "book.bookId - must not be null,book.bookName - must not be blank";
+
 		// when
-		mockMvc.perform(MockMvcRequestBuilders
-				.post("/v1/libraryevent")
-				.content(inputJson)
+		mockMvc.perform(MockMvcRequestBuilders.post("/v1/libraryevent").content(inputJson)
 				.contentType(MediaType.APPLICATION_JSON))
-		.andExpect(MockMvcResultMatchers.status().is4xxClientError());
-		
+		.andExpect(MockMvcResultMatchers.status().is4xxClientError())
+		.andExpect(MockMvcResultMatchers.content().string(errorMessage));
+
 		// then
 	}
 
