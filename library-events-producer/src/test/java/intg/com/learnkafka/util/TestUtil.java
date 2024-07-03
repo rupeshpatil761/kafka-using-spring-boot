@@ -13,7 +13,7 @@ public class TestUtil {
         return new Book(123, "Dilip","Kafka Using Spring Boot" );
     }
 
-    public static Book bookRecordWithInvalidValues(){
+    private static Book bookRecordWithInvalidValues(){
 
         return new Book(null, "","Kafka Using Spring Boot" );
     }

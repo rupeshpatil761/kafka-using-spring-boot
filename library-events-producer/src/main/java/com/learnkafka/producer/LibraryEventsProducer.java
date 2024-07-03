@@ -61,6 +61,7 @@ public class LibraryEventsProducer {
 		});
 	}
 
+	// this will get printed based on acks value in cofig -- default is -1 or ALL
 	private void handleSuccess(Integer key, String value, SendResult<Integer, String> sendResult) {
 		logger.info("Message sent successfully for the key : {} and the value : {} , partition is {} ", key, value,
 				sendResult.getRecordMetadata().partition());

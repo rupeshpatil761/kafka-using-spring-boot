@@ -1,6 +1,6 @@
 package com.learnkafka.controller;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.HashMap;
 
@@ -20,6 +20,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -32,34 +33,34 @@ import com.learnkafka.util.TestUtil;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @EmbeddedKafka(topics = "library-events")
-@TestPropertySource(properties = {"spring.kafka.producer.bootstrap-servers=${spring.embedded.kafka.brokers}",
-"spring.kafka.admin.properties.bootstrap.servers=${spring.embedded.kafka.brokers}"})
+@TestPropertySource(properties = { "spring.kafka.producer.bootstrap-servers=${spring.embedded.kafka.brokers}",
+		"spring.kafka.admin.properties.bootstrap.servers=${spring.embedded.kafka.brokers}" })
 class LibraryEventsControllerIntgTest {
-	
+
 	@Autowired
 	private TestRestTemplate testRestTemplate;
-	
+
 	// ## Use Embedded Kafka Producer in test case -- DONE
-	// 1. configure Embedded kafka using @EmbeddedKafka annotation - so that Junit can create topic in embedded kafka
-	// 2. override kafka bootstrap servers and Admin bootstrap brokers with spring.embedded.kafka.brokers using  @TestPropertySource annotation
-	
+	// 1. configure Embedded kafka using @EmbeddedKafka annotation - so that Junit
+	// can create topic in embedded kafka
+	// 2. override kafka bootstrap servers and Admin bootstrap brokers with
+	// spring.embedded.kafka.brokers using @TestPropertySource annotation
 
 	// ## Use Embedded Kafka Consumer in test case
 	// 1. Wire KafkaConsumer and EmbeddedKafkaBroker
 	// 2. Consume the record from the EmbeddedKafkaBroker and then assert on it.
-	
+
 	@Autowired
 	private EmbeddedKafkaBroker embeddedKafkaBroker;
-	
+
 	private Consumer<Integer, String> consumer;
-	
+
 	@Autowired
 	private ObjectMapper objectMapper;
-	
-	
+
 	@BeforeEach
 	void setUp() {
-		// Configure/wired Kafka Consumer to read from Embedded Broker. 
+		// Configure/wired Kafka Consumer to read from Embedded Broker.
 		// 2nd argument is autoCommit=true
 		var configs = new HashMap<>(KafkaTestUtils.consumerProps("group1", "true", embeddedKafkaBroker));
 		configs.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
@@ -67,36 +68,65 @@ class LibraryEventsControllerIntgTest {
 				.createConsumer();
 		embeddedKafkaBroker.consumeFromAllEmbeddedTopics(consumer);
 	}
-	
+
 	@AfterEach
 	void tearDown() {
 		consumer.close();
 	}
-	
-	
+
 	@Test
 	void testPostLibraryEvent() {
-		// given 
+		// given
 		HttpHeaders httpHeaders = new HttpHeaders();
 		httpHeaders.set("content-type", MediaType.APPLICATION_JSON.toString());
 		var httpEntity = new HttpEntity<>(TestUtil.libraryEventRecord(), httpHeaders);
-		
+
 		// when
-		var responseEntity = testRestTemplate.exchange("/v1/libraryevent", HttpMethod.POST, httpEntity, LibraryEvent.class);
-		
+		ResponseEntity<LibraryEvent> responseEntity = testRestTemplate.exchange("/v1/libraryevent", HttpMethod.POST,
+				httpEntity, LibraryEvent.class);
+
 		// then
 		assertEquals(HttpStatus.CREATED, responseEntity.getStatusCode());
-		
+
 		ConsumerRecords<Integer, String> consumerRecords = KafkaTestUtils.getRecords(consumer);
 		assert consumerRecords.count() == 1;
-		
+
 		consumerRecords.forEach(record -> {
 			var actualRecord = TestUtil.parseLibraryEventRecord(objectMapper, record.value());
-			System.out.println("libraryEventActualRecord : "+actualRecord);
+			System.out.println("libraryEventActualRecord : " + actualRecord);
 			assertEquals(actualRecord, TestUtil.libraryEventRecord());
 		});
 	}
-	
-	// Verification of embedded broker: Check bootstrap.servers in log i.e. [127.0.0.1:55649]
 
+	// Verification of embedded broker: Check bootstrap.servers in log i.e.
+	// [127.0.0.1:55649]
+
+	@Test
+	void testPutLibraryEvent() throws Exception {
+		// given
+		HttpHeaders httpHeaders = new HttpHeaders();
+		httpHeaders.set("content-type", MediaType.APPLICATION_JSON.toString());
+		var libraryEventUpdate = TestUtil.libraryEventRecordUpdate();
+		System.out.println("libraryEvent : " + objectMapper.writeValueAsString(libraryEventUpdate));
+
+		var httpEntity = new HttpEntity<>(libraryEventUpdate, httpHeaders);
+
+		// when
+		ResponseEntity<LibraryEvent> responseEntity = testRestTemplate.exchange("/v1/libraryevent", HttpMethod.PUT,
+				httpEntity, LibraryEvent.class);
+
+		// then
+		assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
+
+		ConsumerRecords<Integer, String> consumerRecords = KafkaTestUtils.getRecords(consumer);
+		System.out.println("==consumerRecords.count() : "+consumerRecords.count());
+		// if we are running both test cases together, assert with 2 size otherwise 1
+		assert consumerRecords.count() == 1;
+
+		consumerRecords.forEach(record -> {
+			var actualRecord = TestUtil.parseLibraryEventRecord(objectMapper, record.value());
+			System.out.println("libraryEventActualRecord : " + actualRecord);
+			assertEquals(actualRecord, libraryEventUpdate);
+		});
+	}
 }

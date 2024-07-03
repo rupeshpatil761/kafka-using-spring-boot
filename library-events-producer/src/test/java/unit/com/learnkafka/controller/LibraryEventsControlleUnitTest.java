@@ -63,5 +63,48 @@ class LibraryEventsControlleUnitTest {
 
 		// then
 	}
+	
+	@Test
+	void testPutLibraryEvent() throws Exception {
+		// given
+		var inputJson = objectMapper.writeValueAsString(TestUtil.libraryEventRecordUpdate());
+		
+		when(libraryEventsProducer.sendLibraryEvent_approach3(isA(LibraryEvent.class))).thenReturn(null);
+		
+		// when
+		mockMvc.perform((MockMvcRequestBuilders.put("/v1/libraryevent")).content(inputJson)
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(MockMvcResultMatchers.status().isOk());
+		
+		//then
+	}
+	
+	@Test
+	void updateLibraryEvent_withNullLibraryEventId() throws Exception {
+		// given
+		var inputJson = objectMapper.writeValueAsString(TestUtil.libraryEventRecordUpdateWithNullLibraryEventId());
+		when(libraryEventsProducer.sendLibraryEvent_approach3(isA(LibraryEvent.class))).thenReturn(null);
+		
+		// when
+		mockMvc.perform((MockMvcRequestBuilders.put("/v1/libraryevent")).content(inputJson)
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(MockMvcResultMatchers.status().is4xxClientError())
+				.andExpect(MockMvcResultMatchers.content().string("please provide the libraryEventId"));
+		// then
+	}
+	
+	@Test
+	void updateLibraryEvent_withNullInvalidEventType() throws Exception {
+		// given
+		var inputJson = objectMapper.writeValueAsString(TestUtil.newLibraryEventRecordWithLibraryEventId());
+		when(libraryEventsProducer.sendLibraryEvent_approach3(isA(LibraryEvent.class))).thenReturn(null);
+		
+		// when
+		mockMvc.perform((MockMvcRequestBuilders.put("/v1/libraryevent")).content(inputJson)
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(MockMvcResultMatchers.status().is4xxClientError())
+				.andExpect(MockMvcResultMatchers.content().string("Only UPDATE event type is supported"));
 
+		// then
+	}
 }
