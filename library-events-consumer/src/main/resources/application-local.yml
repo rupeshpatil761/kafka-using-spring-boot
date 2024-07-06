@@ -8,12 +8,12 @@ spring:
     topic:  library-events
     template:
       default-topic: library-events
-    producer:
+    consumer:
       bootstrap-servers: localhost:9092
       key-serializer: org.apache.kafka.common.serialization.IntegerSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
-      properties:
-        retries: 10
+      group-id: library-events-listener-group
+      auto-offset-reset: latest
     admin:
       bootstrap-servers: localhost:9092
       
