@@ -6,7 +6,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-//@Component
+@Component
+//dont forgot to comment other consumer
 public class LibraryEventsConsumer {
 	
 	private static final Logger logger = LoggerFactory.getLogger(LibraryEventsConsumer.class);

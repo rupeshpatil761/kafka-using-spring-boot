@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.listener.ContainerProperties.AckMode;
 
 @Configuration
 @EnableKafka // not needed in latest version of kafka
@@ -18,7 +17,8 @@ public class LibraryEventsConsumerConfig {
             ConsumerFactory<Object, Object> kafkaConsumerFactory) {
         ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         configurer.configure(factory, kafkaConsumerFactory);
-        factory.getContainerProperties().setAckMode(AckMode.MANUAL);
+        factory.setConcurrency(3);
+        //factory.getContainerProperties().setAckMode(AckMode.MANUAL);
         return factory;
     }
 	

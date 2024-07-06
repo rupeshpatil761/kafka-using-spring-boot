@@ -8,7 +8,7 @@ import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
-@Component
+//@Component
 // dont forgot to comment out LibraryEventsConsumer
 public class LibraryEventsConsumerManualOffset implements AcknowledgingMessageListener<Integer, String> {
 	
