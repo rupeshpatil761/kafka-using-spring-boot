@@ -12,6 +12,7 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 import org.springframework.util.backoff.FixedBackOff;
 
 @Configuration
@@ -41,9 +42,25 @@ public class LibraryEventsConsumerConfig {
 		var exceptionsToRetryList = List.of(RecoverableDataAccessException.class);
 		
 		var fixedBackOff = new FixedBackOff(1000L, 2);
+		
+		ExponentialBackOffWithMaxRetries expBackOff = new ExponentialBackOffWithMaxRetries(2);
+        expBackOff.setInitialInterval(1_000L);
+        expBackOff.setMultiplier(2.0);
+        expBackOff.setMaxInterval(2_000L);
 
+        /**
+         * Just the Custom Error Handler
+         */
 		// override default error handling with fixed back off settings.
-		var errorHandler = new DefaultErrorHandler(fixedBackOff);
+		//var errorHandler = new DefaultErrorHandler(fixedBackOff);
+		
+		/**
+         * Error Handler with Exponential BackOff, Exceptions to Ignore, RetryListener
+         */
+        
+        var errorHandler = new DefaultErrorHandler(
+                expBackOff
+        );
 		
 		// Retry specific exceptions using custom retry policy
 		// *** Either use addRetryableExceptions OR addNotRetryableExceptions at a time
