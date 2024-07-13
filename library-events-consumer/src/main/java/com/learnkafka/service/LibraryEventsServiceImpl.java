@@ -6,6 +6,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.RecoverableDataAccessException;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,6 +31,12 @@ public class LibraryEventsServiceImpl implements LibraryEventsService {
 			LibraryEvent libraryEvent = objectMapper.readValue(consumerRecord.value(), LibraryEvent.class);
 			eventType = libraryEvent.getLibraryEventType().name();
 			log.info("libraryEvent : {}", libraryEvent);
+			
+			// This condition added to replicate the addRetryableExceptions scenario
+			if(libraryEvent.getLibraryEventId()!=null && libraryEvent.getLibraryEventId()==999) {
+				throw new RecoverableDataAccessException("Custom Data access exception");
+			}
+			
 			switch (libraryEvent.getLibraryEventType()) {
 			case NEW:
 				save(libraryEvent);

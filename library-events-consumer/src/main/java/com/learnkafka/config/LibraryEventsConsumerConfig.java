@@ -1,10 +1,13 @@
 package com.learnkafka.config;
 
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.kafka.ConcurrentKafkaListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.dao.RecoverableDataAccessException;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -32,9 +35,22 @@ public class LibraryEventsConsumerConfig {
 
 	// Default back off is 9 retries with no delay 
 	private DefaultErrorHandler customErrorHandler() {
-		var fixedBackOff = new FixedBackOff(1000l, 2);
+		
+		var exceptionsToIgnoreList = List.of(IllegalArgumentException.class);
+		
+		var exceptionsToRetryList = List.of(RecoverableDataAccessException.class);
+		
+		var fixedBackOff = new FixedBackOff(1000L, 2);
+
+		// override default error handling with fixed back off settings.
 		var errorHandler = new DefaultErrorHandler(fixedBackOff);
 		
+		// Retry specific exceptions using custom retry policy
+		// *** Either use addRetryableExceptions OR addNotRetryableExceptions at a time
+		// exceptionsToIgnoreList.forEach(errorHandler::addNotRetryableExceptions);
+		exceptionsToRetryList.forEach(errorHandler::addRetryableExceptions);
+		
+		// Retry listener to monitor each Retry attempt
 		// ** Do not use this in prod env. THis is for just debugging purpose in dev env
 		// RetryListener is Functional interface so passing it as lambda.
 		errorHandler.setRetryListeners(((recod, ex, deliveryAttempt) -> {
