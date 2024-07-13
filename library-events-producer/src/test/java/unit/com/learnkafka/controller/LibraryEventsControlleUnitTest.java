@@ -45,6 +45,30 @@ class LibraryEventsControlleUnitTest {
 
 		// then
 	}
+	
+	// Explanation for when() call in testPostLibraryEvent() test case
+	
+	/***
+	 * The when() call in your unit test case is significant because it allows you
+	 * to mock the behavior of the
+	 * libraryEventsProducer.sendLibraryEvent_approach3() method. In this case,
+	 * since the method is asynchronous and doesn't return anything of interest for
+	 * the test, using thenReturn(null) is sufficient.
+	 * 
+	 * By mocking this method, you are isolating the behavior of the method being
+	 * tested without actually invoking its real functionality, which helps in
+	 * focusing on the specific unit being tested. While you mentioned that the test
+	 * case runs without this line of code, it's important to include it to ensure
+	 * that the behavior of the method being tested is controlled and predictable
+	 * within the test environment.
+	 * 
+	 * This practice is common in unit testing to ensure that the test is reliable
+	 * and independent of external factors.
+	 * 
+	 * Keep in mind that the purpose of unit testing is not only to check if the
+	 * code runs but also to verify its behavior under different scenarios. If you
+	 * have any more questions or need further clarification, feel free to ask.
+	 */
 
 	@Test
 	void testPostLibraryEvent_InvalidInputs() throws Exception {
