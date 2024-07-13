@@ -1,5 +1,7 @@
 package com.learnkafka.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.kafka.ConcurrentKafkaListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,6 +14,9 @@ import org.springframework.util.backoff.FixedBackOff;
 @Configuration
 @EnableKafka // not needed in latest version of kafka
 public class LibraryEventsConsumerConfig {
+	
+	private static final Logger log = LoggerFactory.getLogger(LibraryEventsConsumerConfig.class);
+
 	
 	@Bean
     ConcurrentKafkaListenerContainerFactory<?, ?> kafkaListenerContainerFactory(
@@ -28,7 +33,14 @@ public class LibraryEventsConsumerConfig {
 	// Default back off is 9 retries with no delay 
 	private DefaultErrorHandler customErrorHandler() {
 		var fixedBackOff = new FixedBackOff(1000l, 2);
-		return new DefaultErrorHandler(fixedBackOff);
+		var errorHandler = new DefaultErrorHandler(fixedBackOff);
+		
+		// ** Do not use this in prod env. THis is for just debugging purpose in dev env
+		// RetryListener is Functional interface so passing it as lambda.
+		errorHandler.setRetryListeners(((recod, ex, deliveryAttempt) -> {
+			log.info("Failed record in retry listener , Exception : {} , deliveryAttempt : {} ",ex.getMessage(), deliveryAttempt);
+		}));
+		return errorHandler;
 	}
 	
 }
