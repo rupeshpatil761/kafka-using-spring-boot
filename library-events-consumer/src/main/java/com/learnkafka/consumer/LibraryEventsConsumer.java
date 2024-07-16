@@ -22,7 +22,7 @@ public class LibraryEventsConsumer {
 	// @@KafkaListener internally uses KafkaListenerContainerFactory & ConsumerFactory beans and they are responsible 
 	// for reading the message from consumer
 	@KafkaListener(topics = {"library-events"})
-	public void onMessage(ConsumerRecord<Integer, String> consumerRecord) {
+	public void onMessage(ConsumerRecord<Integer, String> consumerRecord) throws Exception {
 		logger.info("Consumer Record: {}",consumerRecord);
 		libraryEventsService.processLibraryEvent(consumerRecord);
 	}

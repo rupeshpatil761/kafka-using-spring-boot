@@ -6,5 +6,5 @@ import org.springframework.stereotype.Service;
 @Service
 public interface LibraryEventsService {
 
-	void processLibraryEvent(ConsumerRecord<Integer, String> consumerRecord);
+	void processLibraryEvent(ConsumerRecord<Integer, String> consumerRecord) throws Exception;
 }

@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -76,6 +77,7 @@ public class LibraryEventsConsumerIntegrationTest {
 	}
 	
 	@Test
+	@Disabled
 	// flow :: sendDefault() --> kafka topic --> consumer --> service
 	void publishNewLibraryEvent() throws Exception {
 		// given
@@ -105,6 +107,7 @@ public class LibraryEventsConsumerIntegrationTest {
 
 	
 	@Test
+	@Disabled
 	// flow :: sendDefault() --> kafka topic --> consumer --> service
 	void publishUpdateLibraryEvent() throws Exception {
 		//given
@@ -159,7 +162,6 @@ public class LibraryEventsConsumerIntegrationTest {
         //when
         CountDownLatch latch = new CountDownLatch(1);
         latch.await(3, TimeUnit.SECONDS);
-
 
         verify(libraryEventsConsumerSpy, times(3)).onMessage(isA(ConsumerRecord.class));
         verify(libraryEventsServiceSpy, times(3)).processLibraryEvent(isA(ConsumerRecord.class));

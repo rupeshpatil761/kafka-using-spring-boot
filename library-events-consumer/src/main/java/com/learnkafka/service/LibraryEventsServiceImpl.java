@@ -25,7 +25,7 @@ public class LibraryEventsServiceImpl implements LibraryEventsService {
 	private LibraryEventsRepository libraryEventsRepository;
 	
 	@Override
-	public void processLibraryEvent(ConsumerRecord<Integer, String> consumerRecord) {
+	public void processLibraryEvent(ConsumerRecord<Integer, String> consumerRecord) throws Exception {
 		String eventType = "";
 		try {
 			LibraryEvent libraryEvent = objectMapper.readValue(consumerRecord.value(), LibraryEvent.class);
@@ -51,6 +51,7 @@ public class LibraryEventsServiceImpl implements LibraryEventsService {
 			}
 		} catch (Exception e) {
 			log.error("Failed to perform operation i.e. {} | Error msg: {}", eventType, e.getMessage());
+			throw e;
 		}
 	}
 
