@@ -36,6 +36,12 @@ public class LibraryEventsConsumerConfig {
     private String deadLetterTopic;
 
 
+    /**
+     * You can configure the DefaultErrorHandler and DefaultAfterRollbackProcessor with a record recoverer when the maximum number of failures is reached for a record. 
+     * The framework provides the DeadLetterPublishingRecoverer, which publishes the failed message to another topic
+     * The recoverer requires a KafkaTemplate<Object, Object>, which is used to send the record.
+     * The record sent to the dead-letter topic is enhanced with the additional headers
+     */
     public DeadLetterPublishingRecoverer publishingRecoverer() {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate
                 , (r, e) -> {
@@ -61,6 +67,12 @@ public class LibraryEventsConsumerConfig {
 		return factory;
 	}
 
+	
+	/**
+	 * It's used to configure retry policies where each subsequent retry attempt happens after a progressively increasing delay
+	 * For example, if the initial retry delay is 1 second, the subsequent retries might be delayed by 2 seconds, 4 seconds, and so on
+	 * Max Interval: The maximum delay between retries to avoid excessively long delays. 
+	 */
 	private DefaultErrorHandler exponentialBackOffErrorHandler() {
 		ExponentialBackOffWithMaxRetries expBackOff = new ExponentialBackOffWithMaxRetries(2);
 		expBackOff.setInitialInterval(1_000L);

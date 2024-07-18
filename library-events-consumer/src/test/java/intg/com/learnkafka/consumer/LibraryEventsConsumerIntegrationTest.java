@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -34,7 +33,6 @@ import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.context.TestPropertySource;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.learnkafka.entity.Book;
 import com.learnkafka.entity.LibraryEvent;
@@ -206,11 +204,6 @@ public class LibraryEventsConsumerIntegrationTest {
         verify(libraryEventsConsumerSpy, times(3)).onMessage(isA(ConsumerRecord.class));
         verify(libraryEventsServiceSpy, times(3)).processLibraryEvent(isA(ConsumerRecord.class));
 
-        //with Retry listener
-        //verify(libraryEventsConsumerSpy, atLeast(3)).onMessage(isA(ConsumerRecord.class));
-        //verify(libraryEventsServiceSpy, atLeast(3)).processLibraryEvent(isA(ConsumerRecord.class));
-
-
         Map<String, Object> configs = new HashMap<>(KafkaTestUtils.consumerProps("group1", "true", embeddedKafkaBroker));
         consumer = new DefaultKafkaConsumerFactory<>(configs, new IntegerDeserializer(), new StringDeserializer()).createConsumer();
         embeddedKafkaBroker.consumeFromAnEmbeddedTopic(consumer, retryTopic);
@@ -223,7 +216,7 @@ public class LibraryEventsConsumerIntegrationTest {
         
         consumerRecord.headers()
                 .forEach(header -> {
-                    //System.out.println("Header Key : " + header.key() + ", Header Value : " + new String(header.value()));
+                    System.out.println("Header Key : " + header.key() + ", Header Value : " + new String(header.value()));
                 });
     }
 	

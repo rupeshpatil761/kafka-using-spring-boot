@@ -21,9 +21,9 @@ public class LibraryEventsConsumer {
 	// Spring boot auto configuration helps here to configure consumer
 	// @@KafkaListener internally uses KafkaListenerContainerFactory & ConsumerFactory beans and they are responsible 
 	// for reading the message from consumer
-	@KafkaListener(topics = {"library-events"})
+	@KafkaListener(topics = {"library-events"}, groupId = "${spring.kafka.consumer.group-id}")
 	public void onMessage(ConsumerRecord<Integer, String> consumerRecord) throws Exception {
-		logger.info("Consumer Record: {}",consumerRecord);
+		logger.info("Consumer Record : {}",consumerRecord);
 		libraryEventsService.processLibraryEvent(consumerRecord);
 	}
 
