@@ -8,8 +8,10 @@ import static org.mockito.Mockito.verify;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -46,7 +48,7 @@ import com.learnkafka.service.LibraryEventsService;
         , "library-events.DLT"
 })
 @TestPropertySource(properties = { "spring.kafka.producer.bootstrap-servers=${spring.embedded.kafka.brokers}",
-		"spring.kafka.consumer.bootstrap-servers=${spring.embedded.kafka.brokers}"})
+		"spring.kafka.consumer.bootstrap-servers=${spring.embedded.kafka.brokers}", "retryListener.startup=false"})
 public class LibraryEventsConsumerIntegrationTest {
 	
 	@Value("${topics.retry}")
@@ -82,10 +84,21 @@ public class LibraryEventsConsumerIntegrationTest {
 	
 	@BeforeEach
 	void setUp() {
-		// setup to read when consumer is up and read to consume and wait until all partitions are assigned to it
-		for(MessageListenerContainer messageListenerContainer : endpointRegistry.getListenerContainers()) {
-			ContainerTestUtils.waitForAssignment(messageListenerContainer, embeddedKafkaBroker.getPartitionsPerTopic());
-		}
+		// setup to read when all consumers are up and ready to consume and wait until all partitions are assigned to it
+		/*
+		 * for(MessageListenerContainer messageListenerContainer :
+		 * endpointRegistry.getListenerContainers()) {
+		 * ContainerTestUtils.waitForAssignment(messageListenerContainer,
+		 * embeddedKafkaBroker.getPartitionsPerTopic()); }
+		 */
+		
+		// As we are disabling LibraryEventsRetryConsumer as part of this test case, 
+		// we have to wait for assignment of LibraryEventsConsumer only now
+		// Otherwise, we will get error saying: Expected 2 but got 0 partitions for LibraryEventsRetryConsumer listener container
+		var container = endpointRegistry.getListenerContainers().stream().filter(
+				listenerContainer -> Objects.equals(listenerContainer.getGroupId(), "library-events-listener-group"))
+				.collect(Collectors.toList()).get(0);
+		ContainerTestUtils.waitForAssignment(container, embeddedKafkaBroker.getPartitionsPerTopic());
 	}
 	
 	@AfterEach
@@ -200,7 +213,7 @@ public class LibraryEventsConsumerIntegrationTest {
         CountDownLatch latch = new CountDownLatch(1);
         latch.await(3, TimeUnit.SECONDS);
 
-        // Without Retry Listener
+        // Without LibraryEventsRetryListener Consumer -- make sure you disable this consumer while using times(3)
         verify(libraryEventsConsumerSpy, times(3)).onMessage(isA(ConsumerRecord.class));
         verify(libraryEventsServiceSpy, times(3)).processLibraryEvent(isA(ConsumerRecord.class));
 
@@ -215,10 +228,8 @@ public class LibraryEventsConsumerIntegrationTest {
         assertEquals(json, consumerRecord.value());
         
         consumerRecord.headers()
-                .forEach(header -> {
-                    System.out.println("Header Key : " + header.key() + ", Header Value : " + new String(header.value()));
-                });
+        .forEach(header -> {
+            System.out.println("Header Key : " + header.key() + ", Header Value : " + new String(header.value()));
+        });
     }
-	
-	
 }

@@ -17,7 +17,9 @@ public class LibraryEventsRetryConsumer {
 	@Autowired
 	private LibraryEventsServiceImpl libraryEventsService;
 	
-	@KafkaListener(topics = {"${topics.retry}"}, groupId = "retry-listener-group")
+	@KafkaListener(topics = {"${topics.retry}"}
+	, autoStartup = "${retryListener.startup:true}"
+	, groupId = "retry-listener-group")
 	public void onMessage(ConsumerRecord<Integer, String> consumerRecord) throws Exception {
 		logger.info("Consumer Record in Retry Consumer : {}",consumerRecord);
 		// With the below call,  retry consumer will going into loop 
@@ -30,6 +32,16 @@ public class LibraryEventsRetryConsumer {
 	 * Anytime we configure multiple consumers, the group id provided in application.yml is not going to work
 	 * So, its always recommended to add a group id in @KafkaListener annotation
 	 * By configuring seperate group id for each consumer we can easily re-consuming the messages from topic
+	 */
+	
+	/**
+	 * autoStartup = true/false attribute
+	 * -- Anytime we are writing integration test case for one single consumer, 
+	 * the idea is to disable the other consumer as part of integration test case
+	 * -- if we do not disable LibraryEventsRetryConsumer in LibraryEventsConsumerIntegrationTest, 
+	 * test case will fail because extra invocation of processLibraryEvent method call
+	 * -- autoStartup = "${retryListener.startup:true}" -- 
+	 *   introducing new variable and we are setting it from intg test case in @TestPropertySource
 	 */
 
 }
