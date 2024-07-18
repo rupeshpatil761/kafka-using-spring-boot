@@ -2,8 +2,11 @@ package com.learnkafka.config;
 
 import java.util.List;
 
+import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.kafka.ConcurrentKafkaListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,6 +14,8 @@ import org.springframework.dao.RecoverableDataAccessException;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 import org.springframework.util.backoff.FixedBackOff;
@@ -20,6 +25,29 @@ import org.springframework.util.backoff.FixedBackOff;
 public class LibraryEventsConsumerConfig {
 
 	private static final Logger log = LoggerFactory.getLogger(LibraryEventsConsumerConfig.class);
+	
+	@Autowired
+    KafkaTemplate kafkaTemplate;
+	
+	@Value("${topics.retry:library-events.RETRY}")
+    private String retryTopic;
+
+    @Value("${topics.dlt:library-events.DLT}")
+    private String deadLetterTopic;
+
+
+    public DeadLetterPublishingRecoverer publishingRecoverer() {
+        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate
+                , (r, e) -> {
+            log.error("======Inside publishingRecoverer : {} | cause: {} ", e.getMessage(), e.getCause(), e);
+            if (e.getCause() instanceof RecoverableDataAccessException) {
+                return new TopicPartition(retryTopic, r.partition());
+            } else {
+                return new TopicPartition(deadLetterTopic, r.partition());
+            }
+        });
+        return recoverer;
+    }
 
 	@Bean
 	ConcurrentKafkaListenerContainerFactory<?, ?> kafkaListenerContainerFactory(
@@ -29,52 +57,65 @@ public class LibraryEventsConsumerConfig {
 		configurer.configure(factory, kafkaConsumerFactory);
 		factory.setConcurrency(3);
 		// factory.getContainerProperties().setAckMode(AckMode.MANUAL);
-		// factory.setCommonErrorHandler(simpleErrorHandler());
-		factory.setCommonErrorHandler(errorHandlerWithRetryListener());
+		factory.setCommonErrorHandler(errorHandlerWithPublishingRecoverer());
 		return factory;
 	}
 
+	private DefaultErrorHandler exponentialBackOffErrorHandler() {
+		ExponentialBackOffWithMaxRetries expBackOff = new ExponentialBackOffWithMaxRetries(2);
+		expBackOff.setInitialInterval(1_000L);
+		expBackOff.setMultiplier(2.0);
+		expBackOff.setMaxInterval(2000L);
+		return new DefaultErrorHandler(expBackOff);
+	}
+
+	
+	// Error Handler with Fixed BackOff and RetryListener
+	// Retry Listener to monitor each Retry attempt is not advisable to use in PROD env
+	// DO NOT TOUCH THIS -- Can be used for publishModifyLibraryEvent_Null_LibraryEventId test case
+	private DefaultErrorHandler errorHandlerWithRetryListener() {
+		var errorHandler = new DefaultErrorHandler(new FixedBackOff(1000L, 2));
+		// RetryListener is Functional interface so passing it as lambda.
+		errorHandler.setRetryListeners(((recod, ex, deliveryAttempt) -> {
+			log.info("DefaultErrorHandler | Failed record in retry listener , Exception : {} , deliveryAttempt : {} ", ex.getMessage(),
+					deliveryAttempt);
+		}));
+		return errorHandler;
+	}
+	
 	// Default back off is 9 retries with no delay
+	// DO NOT TOUCH THIS -- Can be used for publishModifyLibraryEvent_Null_LibraryEventId test case
 	private DefaultErrorHandler simpleErrorHandler() {
 		var fixedBackOff = new FixedBackOff(1000L, 2);
 		return new DefaultErrorHandler(fixedBackOff);
 	}
 
-	private ExponentialBackOffWithMaxRetries exponentialBackOff() {
-		ExponentialBackOffWithMaxRetries expBackOff = new ExponentialBackOffWithMaxRetries(2);
-		expBackOff.setInitialInterval(1_000L);
-		expBackOff.setMultiplier(2.0);
-		expBackOff.setMaxInterval(2000L);
-		return expBackOff;
-	}
-
-	private DefaultErrorHandler exponentialErrorHandler() {
-
-		return new DefaultErrorHandler(exponentialBackOff());
-	}
-
+	// Can be used for publishModifyLibraryEvent_999_LibraryEventId test case
 	private DefaultErrorHandler errorHandlerWithExceptionsToIgnoreOrRetry() {
+		var fixedBackOff = new FixedBackOff(1000L, 2);
 		var exceptionsToIgnoreList = List.of(IllegalArgumentException.class);
 		var exceptionsToRetryList = List.of(RecoverableDataAccessException.class);
-		var errorHandler = new DefaultErrorHandler(new FixedBackOff(1000L, 2));
+		
+		var errorHandler = new DefaultErrorHandler(fixedBackOff);
 
-		// *** Either use addRetryableExceptions OR addNotRetryableExceptions at a time
-		exceptionsToRetryList.forEach(errorHandler::addRetryableExceptions);
-		// exceptionsToIgnoreList.forEach(errorHandler::addNotRetryableExceptions);
+		// *** Either use addRetryableExceptions OR addNotRetryableExceptions at atime
+		exceptionsToRetryList.forEach(errorHandler::addRetryableExceptions); //
+		//exceptionsToIgnoreList.forEach(errorHandler::addNotRetryableExceptions);
+		return errorHandler;
+	}
+	
+	// Can be used for publishModifyLibraryEvent_999_LibraryEventId_deadletterTopic test case
+	private DefaultErrorHandler errorHandlerWithPublishingRecoverer() {
+		var fixedBackOff = new FixedBackOff(1000L, 2);
+		var exceptionsToIgnoreList = List.of(IllegalArgumentException.class);
+		var exceptionsToRetryList = List.of(RecoverableDataAccessException.class);
+		
+		var errorHandler = new DefaultErrorHandler(publishingRecoverer(), fixedBackOff);
+
+		// *** Either use addRetryableExceptions OR addNotRetryableExceptions at atime
+		exceptionsToRetryList.forEach(errorHandler::addRetryableExceptions); //
+		//exceptionsToIgnoreList.forEach(errorHandler::addNotRetryableExceptions);
 		return errorHandler;
 	}
 
-	// Error Handler with Exponential BackOff and RetryListener
-	// Retry Listener (to monitor each Retry attempt) is not advisable to use in PROD env
-	private DefaultErrorHandler errorHandlerWithRetryListener() {
-		var errorHandler = new DefaultErrorHandler(new FixedBackOff(1000L, 2));
-		
-		// RetryListener is Functional interface so passing it as lambda.
-		errorHandler.setRetryListeners(((recod, ex, deliveryAttempt) -> {
-			log.info("Failed record in retry listener , Exception : {} , deliveryAttempt : {} ", ex.getMessage(),
-					deliveryAttempt);
-		}));
-		
-		return errorHandler;
-	}
 }

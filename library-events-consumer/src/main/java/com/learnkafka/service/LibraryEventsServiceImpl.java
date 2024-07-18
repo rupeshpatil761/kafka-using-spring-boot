@@ -30,11 +30,11 @@ public class LibraryEventsServiceImpl implements LibraryEventsService {
 		try {
 			LibraryEvent libraryEvent = objectMapper.readValue(consumerRecord.value(), LibraryEvent.class);
 			eventType = libraryEvent.getLibraryEventType().name();
-			log.info("libraryEvent : {}", libraryEvent);
+			log.info("LibraryEventsServiceImpl | libraryEvent : {}", libraryEvent);
 			
 			// This condition added to replicate the addRetryableExceptions scenario
 			if(libraryEvent.getLibraryEventId()!=null && libraryEvent.getLibraryEventId()==999) {
-				throw new RecoverableDataAccessException("Custom Data access exception");
+				throw new RecoverableDataAccessException("Temporary network error");
 			}
 			
 			switch (libraryEvent.getLibraryEventType()) {
