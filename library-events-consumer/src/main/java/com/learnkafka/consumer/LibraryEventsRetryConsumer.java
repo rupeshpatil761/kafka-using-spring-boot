@@ -18,7 +18,7 @@ public class LibraryEventsRetryConsumer {
 	private LibraryEventsServiceImpl libraryEventsService;
 	
 	@KafkaListener(topics = {"${topics.retry}"}
-	, autoStartup = "${retryListener.startup:true}"
+	, autoStartup = "${retryListener.startup:false}"
 	, groupId = "retry-listener-group")
 	public void onMessage(ConsumerRecord<Integer, String> consumerRecord) throws Exception {
 		logger.info("Consumer Record in Retry Consumer : {}",consumerRecord);

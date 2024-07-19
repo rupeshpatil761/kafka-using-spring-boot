@@ -47,8 +47,10 @@ public class LibraryEventsConsumerConfig {
                 , (r, e) -> {
             log.error("======Inside publishingRecoverer : {} | cause: {} ", e.getMessage(), e.getCause(), e);
             if (e.getCause() instanceof RecoverableDataAccessException) {
+            	log.info("======Inside publishingRecoverer | publishing message to retry topic");
                 return new TopicPartition(retryTopic, r.partition());
             } else {
+            	log.info("======Inside publishingRecoverer | publishing message to deadletter topic");
                 return new TopicPartition(deadLetterTopic, r.partition());
             }
         });
@@ -116,7 +118,7 @@ public class LibraryEventsConsumerConfig {
 		return errorHandler;
 	}
 	
-	// Can be used for publishModifyLibraryEvent_999_LibraryEventId_deadletterTopic test case
+	// Can be used for publishModifyLibraryEvent_999_LibraryEventId_retryTopic test case
 	private DefaultErrorHandler errorHandlerWithPublishingRecoverer() {
 		var fixedBackOff = new FixedBackOff(1000L, 2);
 		var exceptionsToIgnoreList = List.of(IllegalArgumentException.class);
