@@ -22,6 +22,7 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 import org.springframework.util.backoff.FixedBackOff;
 
+import com.learnkafka.entity.LibraryEventStatus;
 import com.learnkafka.service.FailureService;
 
 @Configuration
@@ -42,10 +43,6 @@ public class LibraryEventsConsumerConfig {
     @Autowired
     FailureService failureService;
     
-    private static final String RETRY = "RETRY";
-    private static final String DEAD = "DEAD";
-
-
     /**
      * You can configure the DefaultErrorHandler and DefaultAfterRollbackProcessor with a record recoverer when the maximum number of failures is reached for a record. 
      * The framework provides the DeadLetterPublishingRecoverer, which publishes the failed message to another topic
@@ -74,11 +71,11 @@ public class LibraryEventsConsumerConfig {
     	if (e.getCause() instanceof RecoverableDataAccessException) {
     		// recovery logic
     		log.info("======Inside Recovery ");
-    		failureService.saveFailedRecord(record, e, RETRY);
+    		failureService.saveFailedRecord(record, e, LibraryEventStatus.RETRY.name());
     	} else {
     		// non-recovery logic
     		log.info("======Inside Non-Recovery ");
-    		failureService.saveFailedRecord(record, e, DEAD);
+    		failureService.saveFailedRecord(record, e, LibraryEventStatus.DEAD.name());
     	}
     };
 
