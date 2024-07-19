@@ -15,7 +15,7 @@ spring:
       properties:
         retries: 10
     admin:
-      bootstrap-servers: localhost:9092
+      bootstrap.servers: localhost:9092
       
       
 #With spring.kafka.producer properties -- Kafka Template will be created

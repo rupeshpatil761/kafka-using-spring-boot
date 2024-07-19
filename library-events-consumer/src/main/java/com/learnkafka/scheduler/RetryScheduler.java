@@ -34,7 +34,7 @@ public class RetryScheduler {
                 var consumerRecord = buildConsumerRecord(failureRecord);
                 try {
                 	// our code will keep throwing same exception 
-                	// so to just, skip re-processing same failed record, putting try-catch here  
+                	// so to just skip re-processing same failed record, putting try-catch here  
                 	libraryEventsService.processLibraryEvent(consumerRecord);
                 } catch (Exception e) {
                 	// ignore
