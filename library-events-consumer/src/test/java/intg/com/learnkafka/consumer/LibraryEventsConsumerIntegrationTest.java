@@ -39,6 +39,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.learnkafka.entity.Book;
 import com.learnkafka.entity.LibraryEvent;
 import com.learnkafka.entity.LibraryEventType;
+import com.learnkafka.repository.FailureRecordRepository;
 import com.learnkafka.repository.LibraryEventsRepository;
 import com.learnkafka.service.LibraryEventsService;
 
@@ -81,6 +82,9 @@ public class LibraryEventsConsumerIntegrationTest {
 	private ObjectMapper objectMapper;
 	
 	private Consumer<Integer, String> consumer;
+	
+	@Autowired
+	private FailureRecordRepository failureRecordRepository;
 	
 	@BeforeEach
 	void setUp() {
@@ -204,7 +208,8 @@ public class LibraryEventsConsumerIntegrationTest {
     }
 	
 	@Test
-	//@Disabled
+	@Disabled
+	// Approach 1 : Option 1: Reprocess the message again
     void publishModifyLibraryEvent_999_LibraryEventId_retryTopic() throws Exception {
         //given
         Integer libraryEventId = 999;
@@ -235,6 +240,8 @@ public class LibraryEventsConsumerIntegrationTest {
     }
 	
 	@Test
+	@Disabled
+	// Approach 2: Option 1 : Discard the message
 	void publishModifyLibraryEvent_Null_LibraryEventId_deadletterTopic() throws Exception {
         //given
         Integer libraryEventId = null;
@@ -258,5 +265,34 @@ public class LibraryEventsConsumerIntegrationTest {
         System.out.println("consumer Record in deadletter topic : " + consumerRecord.value() +" | deadLetterTopic: "+deadLetterTopic);
 
         assertEquals(json, consumerRecord.value());
+        
+        consumerRecord.headers()
+        .forEach(header -> {
+            System.out.println("Header Key : " + header.key() + ", Header Value : " + new String(header.value()));
+        });
+	}
+	
+	@Test
+	void publishModifyLibraryEvent_Null_LibraryEventId_failureRecord() throws Exception {
+        //given
+        Integer libraryEventId = null;
+        String json = "{\"libraryEventId\":" + libraryEventId + ",\"libraryEventType\":\"UPDATE\",\"book\":{\"bookId\":456,\"bookName\":\"Kafka Using Spring Boot\",\"bookAuthor\":\"Dilip\"}}";
+        kafkaTemplate.sendDefault(libraryEventId, json).get();
+        
+        //when
+        CountDownLatch latch = new CountDownLatch(1);
+        latch.await(5, TimeUnit.SECONDS);
+
+        // times 10 because default error handling will try for 10 times
+        verify(libraryEventsConsumerSpy, times(3)).onMessage(isA(ConsumerRecord.class));
+        verify(libraryEventsServiceSpy, times(3)).processLibraryEvent(isA(ConsumerRecord.class));
+        
+        var count = failureRecordRepository.count();
+        assertEquals(1, count);
+        
+        failureRecordRepository.findAll()
+        	.forEach(failedRecord -> {
+        		System.out.println("FailureRecord: "+failedRecord);
+        	});
 	}
 }

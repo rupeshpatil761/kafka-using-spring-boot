@@ -2,6 +2,7 @@ package com.learnkafka.config;
 
 import java.util.List;
 
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,10 +16,13 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 import org.springframework.util.backoff.FixedBackOff;
+
+import com.learnkafka.service.FailureService;
 
 @Configuration
 @EnableKafka // not needed in latest version of kafka
@@ -34,6 +38,12 @@ public class LibraryEventsConsumerConfig {
 
     @Value("${topics.dlt:library-events.DLT}")
     private String deadLetterTopic;
+    
+    @Autowired
+    FailureService failureService;
+    
+    private static final String RETRY = "RETRY";
+    private static final String DEAD = "DEAD";
 
 
     /**
@@ -56,6 +66,21 @@ public class LibraryEventsConsumerConfig {
         });
         return recoverer;
     }
+    
+    // Reprocess the already consumed message again 
+    ConsumerRecordRecoverer consumerRecordRecoverer = (consumerRecord, e) -> {
+    	var record = (ConsumerRecord<Integer, String>) consumerRecord;
+    	log.info("======Inside ConsumerRecordRecoverer | Exception : {} ", e.getMessage(), e);
+    	if (e.getCause() instanceof RecoverableDataAccessException) {
+    		// recovery logic
+    		log.info("======Inside Recovery ");
+    		failureService.saveFailedRecord(record, e, RETRY);
+    	} else {
+    		// non-recovery logic
+    		log.info("======Inside Non-Recovery ");
+    		failureService.saveFailedRecord(record, e, DEAD);
+    	}
+    };
 
 	@Bean
 	ConcurrentKafkaListenerContainerFactory<?, ?> kafkaListenerContainerFactory(
@@ -124,7 +149,7 @@ public class LibraryEventsConsumerConfig {
 		var exceptionsToIgnoreList = List.of(IllegalArgumentException.class);
 		var exceptionsToRetryList = List.of(RecoverableDataAccessException.class);
 		
-		var errorHandler = new DefaultErrorHandler(publishingRecoverer(), fixedBackOff);
+		var errorHandler = new DefaultErrorHandler(consumerRecordRecoverer, fixedBackOff);
 
 		// *** Either use addRetryableExceptions OR addNotRetryableExceptions at atime
 		exceptionsToRetryList.forEach(errorHandler::addRetryableExceptions); //
